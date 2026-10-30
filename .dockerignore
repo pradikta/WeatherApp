@@ -6,4 +6,5 @@
 .vscode
 frontend
 tests
+observability
 **/appsettings.Local.json

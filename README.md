@@ -132,6 +132,25 @@ docker run --rm -p 8080:8080 -e OpenWeatherMap__ApiKey=<your key> weatherapp
 
 The image runs as a non-root user on port 8080. TLS is expected to terminate at a reverse proxy or ingress, so the app itself does not redirect to HTTPS.
 
+### 5. Local observability (optional)
+
+A Docker Compose stack in `observability/` runs an OpenTelemetry Collector, Jaeger (traces), and Prometheus (metrics) so telemetry can be inspected locally. It is for development only: no authentication and no persistence.
+
+```powershell
+docker compose -f observability/docker-compose.yml up -d
+
+# Start the API with the OTLP endpoint (gRPC, the SDK default), from src\WeatherApp.Api
+$env:OTEL_EXPORTER_OTLP_ENDPOINT = 'http://localhost:4317'
+dotnet run --launch-profile http
+```
+
+| Tool | URL | What to look at |
+|---|---|---|
+| Jaeger | http://localhost:16686 | Service `WeatherApp.Api`. One weather request is one trace: the request, `FetchCurrentWeather`, the geocoding call, and the weather call as separate spans (one per retry). |
+| Prometheus | http://localhost:9090 | `weather_cache_hits_total`, `weather_cache_misses_total`, `http_server_request_duration_seconds_count`, `http_client_request_duration_seconds_count`. |
+
+Metrics are exported every 60 seconds, so allow up to a minute before they appear in Prometheus. Logs stay on the API's stdout as JSON. The collector only prints a summary of them. Stop the stack with `docker compose -f observability/docker-compose.yml down`.
+
 ## Testing
 
 Tests live in `tests/WeatherApp.Tests` (xUnit, Moq, FluentAssertions) and run **fully offline**: no test calls the network. External HTTP is replaced by an in-memory `HttpMessageHandler`.
