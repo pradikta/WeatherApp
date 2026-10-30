@@ -43,7 +43,7 @@ OpenWeatherMap is called with `units=imperial`. The conversion to Celsius lives 
 | GET | `/health` | Health check. |
 | GET | `/openapi/v1.json` | OpenAPI document (Development only). |
 
-The weather response contains: `location` ("City, Country"), `timeUtc`, `windSpeed`, `windDirection`, `visibility`, `pressure`, `skyCondition`, `tempFahrenheit`, `tempCelsius`, `dewPoint`, `humidity`.
+The weather response contains: `location` ("City, Country"), `timeUtc`, `windSpeed`, `windDirection`, `visibility`, `pressure`, `skyCondition`, `tempFahrenheit`, `tempCelsius`, `dewPoint`, `humidity`. `windSpeed`, `windDirection`, and `visibility` are `null` when OpenWeatherMap omits them, instead of a misleading `0`.
 
 ### Errors
 
@@ -54,6 +54,7 @@ All errors use RFC 7807 Problem Details (`application/problem+json`):
 | Validation failure (includes per-field `errors`) | 400 |
 | City not found | 404 |
 | OpenWeatherMap unreachable or rejected the request | 502 |
+| Rate limit exceeded (includes `Retry-After`) | 429 |
 | Any other unhandled exception | 500 |
 
 ## Setup
@@ -85,8 +86,10 @@ Other settings in `appsettings.json`:
 | `OpenWeatherMap:BaseAddress` | OpenWeatherMap base URL | `https://api.openweathermap.org/` |
 | `Caching:WeatherCacheDurationMinutes` | How long a city's weather is cached | `1` |
 | `Cors:AllowedOrigins` | Origins allowed to call the API | `http://localhost:5173` |
+| `RateLimiting:PermitLimit` / `WindowSeconds` | Fixed-window limit per client IP (`/health` is exempt) | `100` / `60` |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | OTLP collector for traces and metrics; nothing is exported when unset | unset |
 
-Without an API key, the weather endpoint returns `500`; the log explains that the key is missing.
+Invalid `OpenWeatherMap:BaseAddress` or `Caching` values stop the app at startup (`ValidateOnStart`). A missing API key does not: the app boots, and the weather endpoint returns `500` with the reason in the log.
 
 ### 2. Build, run, test
 
@@ -96,6 +99,15 @@ dotnet build
 dotnet run --project src/WeatherApp.Api   # http://localhost:5177
 dotnet test
 ```
+
+### 3. Docker (optional)
+
+```powershell
+docker build -t weatherapp .
+docker run --rm -p 8080:8080 -e OpenWeatherMap__ApiKey=<your key> weatherapp
+```
+
+The image runs as a non-root user on port 8080. TLS is expected to terminate at a reverse proxy or ingress, so the app itself does not redirect to HTTPS.
 
 ## Testing
 
@@ -110,6 +122,9 @@ Tests live in `tests/WeatherApp.Tests` (xUnit, Moq, FluentAssertions) and run **
 | `OpenWeatherMapService` | Mocked JSON payloads, request URLs, error and edge cases. |
 | API endpoints | `WebApplicationFactory`: status codes, problem details, CORS, and a full-stack weather flow. |
 | Architecture | Dependency rule between layers. |
+| Hardening | Rate limiting (429 + `Retry-After`, `/health` exempt), startup option validation, and telemetry counters/activity. |
+
+CI (`.github/workflows/ci.yml`) builds and runs the same tests on every push and pull request.
 
 Known gap: retry and circuit breaker behavior of the resilience handler is not covered by tests.
 
@@ -131,8 +146,12 @@ Known gap: retry and circuit breaker behavior of the resilience handler is not c
 
 ### Operations
 
-- Structured JSON console logging (`AddJsonConsole`), suitable for containers.
+- Structured JSON console logging (`AddJsonConsole` with scopes), so each log line carries `TraceId` and `SpanId` for correlation with traces.
+- OpenTelemetry traces (ASP.NET Core, `HttpClient`, and a `FetchCurrentWeather` activity) and metrics (ASP.NET Core, `HttpClient`, runtime, resilience, plus `weather.cache.hits`, `weather.cache.misses`, `weather.notes.created`). Application-layer telemetry uses only BCL types (`ActivitySource`, `Meter`), so that layer has no OpenTelemetry dependency. Export is OTLP and only enabled when `OTEL_EXPORTER_OTLP_ENDPOINT` is set.
+- Per-IP rate limiting protects the OpenWeatherMap quota. Behind a reverse proxy, configure forwarded headers so the client IP is not the proxy IP.
+- `TimeProvider` is injected wherever the current time is needed, so time is deterministic in tests.
 - CORS is limited to the configured frontend origins.
+- `Directory.Build.props` centralizes shared settings and treats warnings as errors.
 
 ## AI assistant configuration
 
