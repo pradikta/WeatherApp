@@ -4,6 +4,7 @@ using FluentAssertions;
 using Microsoft.Extensions.Options;
 using WeatherApp.Application.Exceptions;
 using WeatherApp.Infrastructure.Services;
+using WeatherApp.Tests.Support;
 
 namespace WeatherApp.Tests.Infrastructure;
 
@@ -90,6 +91,43 @@ public class OpenWeatherMapServiceTests
         handler.Requests.Should().BeEmpty();
     }
 
+    [Fact]
+    public async Task GetCurrentWeatherAsync_EmptyWeatherAndMissingWind_UsesDefaults()
+    {
+        const string sparseJson = """{"main":{"temp":32,"pressure":1000,"humidity":80},"visibility":5000,"dt":1760000000}""";
+        var handler = new StubHttpMessageHandler(request =>
+            request.RequestUri!.AbsolutePath.StartsWith("/geo/") ? Json(GeocodeJson) : Json(sparseJson));
+
+        var result = await CreateService(handler).GetCurrentWeatherAsync("Jakarta", CancellationToken.None);
+
+        result.SkyCondition.Should().BeEmpty();
+        result.WindSpeed.Should().Be(0);
+        result.WindDirection.Should().Be(0);
+        result.TempCelsius.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task GetCurrentWeatherAsync_NullGeocodeBody_ThrowsInvalidOperationException()
+    {
+        var handler = new StubHttpMessageHandler(_ => Json("null"));
+
+        var act = () => CreateService(handler).GetCurrentWeatherAsync("Jakarta", CancellationToken.None);
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
+    }
+
+    [Fact]
+    public async Task GetCurrentWeatherAsync_CancelledToken_ThrowsOperationCanceledException()
+    {
+        var handler = new StubHttpMessageHandler(_ => Json(GeocodeJson));
+        using var cts = new CancellationTokenSource();
+        await cts.CancelAsync();
+
+        var act = () => CreateService(handler).GetCurrentWeatherAsync("Jakarta", cts.Token);
+
+        await act.Should().ThrowAsync<OperationCanceledException>();
+    }
+
     [Theory]
     [InlineData(20, 50, 9.3)]
     [InlineData(30, 100, 30)]
@@ -114,16 +152,4 @@ public class OpenWeatherMapServiceTests
 
     private static HttpResponseMessage Json(string body) =>
         new(HttpStatusCode.OK) { Content = new StringContent(body, Encoding.UTF8, "application/json") };
-
-    // Answers every request from memory, so no test can reach the network.
-    private sealed class StubHttpMessageHandler(Func<HttpRequestMessage, HttpResponseMessage> responder) : HttpMessageHandler
-    {
-        public List<string> Requests { get; } = [];
-
-        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
-        {
-            Requests.Add(request.RequestUri!.PathAndQuery);
-            return Task.FromResult(responder(request));
-        }
-    }
 }
