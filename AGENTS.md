@@ -54,16 +54,16 @@
 ### 2. Application Layer (`src/WeatherApp.Application/`)
 
 - CQRS via MediatR. Queries return DTOs.
-- **Caching**: Inject and apply `IMemoryCache` for external API query results (cache for 10 minutes).
+- **Caching**: Inject and apply `IMemoryCache` for external API query results (cache duration dynamically configurable via `Caching` options).
 - **LoggingBehavior**: Global interception of CQRS requests logging payload and stopwatch metrics.
 - Commands mutate state and enforce validation via FluentValidation.
 
 ### 3. Infrastructure Layer (`src/WeatherApp.Infrastructure/`)
 
-- `ApplicationDbContext` uses SQLite In-Memory (`DataSource=:memory:`).
-- `OnModelCreating` seeds 3 countries (Indonesia, Japan, Australia) and cities.
+- `ApplicationDbContext` uses SQLite In-Memory (`DataSource=:memory:`) with a shared open connection.
+- `OnModelCreating` seeds sample country and city data.
 - All Read Queries MUST call `.AsNoTracking()`.
-- `OpenWeatherMapService` implements `IWeatherService` via `HttpClient` (`units=imperial`).
+- `OpenWeatherMapService` implements `IWeatherService` via `HttpClient` (`units=imperial`), configured via the `OpenWeatherMap` config section (`BaseAddress`, `ApiKey`). Geocodes the city name to coordinates (the by-city-name query is deprecated), maps `Location` as "City, Country", and computes `DewPoint` (Magnus formula) because the API does not return it.
 
 ### 4. Api Layer (`src/WeatherApp.Api/`)
 
