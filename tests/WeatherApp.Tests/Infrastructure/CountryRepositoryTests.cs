@@ -4,7 +4,7 @@ using WeatherApp.Tests.Support;
 
 namespace WeatherApp.Tests.Infrastructure;
 
-public class CountryRepositoryTests : IDisposable
+public sealed class CountryRepositoryTests : IDisposable
 {
     private readonly SqliteTestDatabase _database = new();
 

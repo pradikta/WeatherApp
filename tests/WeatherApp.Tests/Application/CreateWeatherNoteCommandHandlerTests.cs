@@ -6,7 +6,7 @@ using WeatherApp.Tests.Support;
 
 namespace WeatherApp.Tests.Application;
 
-public class CreateWeatherNoteCommandHandlerTests : IDisposable
+public sealed class CreateWeatherNoteCommandHandlerTests : IDisposable
 {
     private readonly SqliteTestDatabase _database = new();
 
