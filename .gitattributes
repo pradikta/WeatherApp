@@ -1,0 +1,10 @@
+# Enforce LF (Unix) line endings for all text files
+* text=auto eol=lf
+
+# Treat image and document files as binary (no line ending normalization)
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
