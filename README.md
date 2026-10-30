@@ -39,7 +39,7 @@ OpenWeatherMap is called with `units=imperial`. The conversion to Celsius lives 
 | GET | `/api/countries` | All countries, ordered by name. |
 | GET | `/api/countries/{countryCode}/cities` | Cities of a country (2-letter ISO code). |
 | GET | `/api/weather/{cityName}` | Current weather for a city. |
-| POST | `/api/weather/notes` | Saves a note. Body: `{ "cityName": "...", "note": "..." }`. Returns `201` with the created `id`. |
+| POST | `/api/weather/notes` | Saves a note. Body: `{ "cityName": "...", "note": "..." }`. Returns `201` with the created `id`. The city must exist in the seeded data (matched case-insensitively and stored with its canonical name); otherwise `404`. |
 | GET | `/health` | Health check. |
 | GET | `/openapi/v1.json` | OpenAPI document (Development only). |
 

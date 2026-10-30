@@ -2,6 +2,8 @@ using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Time.Testing;
 using WeatherApp.Application.Commands;
+using WeatherApp.Application.Exceptions;
+using WeatherApp.Infrastructure.Data;
 using WeatherApp.Infrastructure.Repositories;
 using WeatherApp.Tests.Support;
 
@@ -14,11 +16,39 @@ public sealed class CreateWeatherNoteCommandHandlerTests : IDisposable
 
     public void Dispose() => _database.Dispose();
 
+    private CreateWeatherNoteCommandHandler CreateHandler(ApplicationDbContext context) =>
+        new(new WeatherNoteRepository(context), new CountryRepository(context), _clock);
+
+    [Fact]
+    public async Task Handle_UnknownCity_ThrowsAndPersistsNothing()
+    {
+        await using var context = _database.CreateContext();
+        var handler = CreateHandler(context);
+
+        var act = () => handler.Handle(new CreateWeatherNoteCommand("Atlantis", "x"), CancellationToken.None);
+
+        (await act.Should().ThrowAsync<CityNotFoundException>()).Which.CityName.Should().Be("Atlantis");
+        await using var readContext = _database.CreateContext();
+        (await readContext.WeatherNotes.AsNoTracking().CountAsync()).Should().Be(0);
+    }
+
+    [Fact]
+    public async Task Handle_CityNameDifferentCase_StoresCanonicalName()
+    {
+        await using var context = _database.CreateContext();
+
+        var result = await CreateHandler(context).Handle(
+            new CreateWeatherNoteCommand("  jAkArTa ", "x"),
+            CancellationToken.None);
+
+        result.CityName.Should().Be("Jakarta");
+    }
+
     [Fact]
     public async Task Handle_PersistsNoteAndReturnsCreatedIdentifier()
     {
         await using var writeContext = _database.CreateContext();
-        var handler = new CreateWeatherNoteCommandHandler(new WeatherNoteRepository(writeContext), _clock);
+        var handler = CreateHandler(writeContext);
 
         var result = await handler.Handle(
             new CreateWeatherNoteCommand("Jakarta", "Humid afternoon"),
@@ -42,7 +72,7 @@ public sealed class CreateWeatherNoteCommandHandlerTests : IDisposable
     public async Task Handle_CalledTwice_PersistsTwoNotesWithDistinctIds()
     {
         await using var context = _database.CreateContext();
-        var handler = new CreateWeatherNoteCommandHandler(new WeatherNoteRepository(context), _clock);
+        var handler = CreateHandler(context);
 
         var first = await handler.Handle(new CreateWeatherNoteCommand("Tokyo", "One"), CancellationToken.None);
         var second = await handler.Handle(new CreateWeatherNoteCommand("Tokyo", "Two"), CancellationToken.None);

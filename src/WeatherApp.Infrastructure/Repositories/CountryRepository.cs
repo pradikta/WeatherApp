@@ -23,4 +23,12 @@ public sealed class CountryRepository(ApplicationDbContext dbContext) : ICountry
             .OrderBy(c => c.Name)
             .ToListAsync(cancellationToken);
     }
+
+    public async Task<City?> FindCityByNameAsync(string cityName, CancellationToken cancellationToken)
+    {
+        var normalized = cityName.Trim().ToLower();
+        return await dbContext.Cities
+            .AsNoTracking()
+            .FirstOrDefaultAsync(c => c.Name.ToLower() == normalized, cancellationToken);
+    }
 }
