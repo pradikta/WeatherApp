@@ -102,8 +102,17 @@ public class QueryHandlerTests
     [Theory]
     [InlineData("", false)]
     [InlineData("Jakarta", true)]
-    public void WeatherValidator_RequiresCityName(string city, bool expectedValid)
+    [InlineData("MAX", true)]
+    [InlineData("TOO_LONG", false)]
+    public void WeatherValidator_RequiresCityNameWithinMaxLength(string city, bool expectedValid)
     {
+        city = city switch
+        {
+            "MAX" => new string('a', 100),
+            "TOO_LONG" => new string('a', 101),
+            _ => city
+        };
+
         new GetCurrentWeatherQueryValidator().Validate(new GetCurrentWeatherQuery(city))
             .IsValid.Should().Be(expectedValid);
     }

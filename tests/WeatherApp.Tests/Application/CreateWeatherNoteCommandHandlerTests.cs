@@ -62,12 +62,24 @@ public class CreateWeatherNoteCommandHandlerTests : IDisposable
         result.Errors.Should().ContainSingle(e => e.PropertyName == expectedProperty);
     }
 
-    [Fact]
-    public void Validator_RejectsOverlongNote()
+    [Theory]
+    [InlineData(100, true)]
+    [InlineData(101, false)]
+    public void Validator_EnforcesCityNameMaxLength(int length, bool expectedValid)
     {
-        var command = new CreateWeatherNoteCommand("Jakarta", new string('x', 1001));
+        var command = new CreateWeatherNoteCommand(new string('a', length), "ok");
 
-        new CreateWeatherNoteCommandValidator().Validate(command).IsValid.Should().BeFalse();
+        new CreateWeatherNoteCommandValidator().Validate(command).IsValid.Should().Be(expectedValid);
+    }
+
+    [Theory]
+    [InlineData(1000, true)]
+    [InlineData(1001, false)]
+    public void Validator_EnforcesNoteMaxLength(int length, bool expectedValid)
+    {
+        var command = new CreateWeatherNoteCommand("Jakarta", new string('x', length));
+
+        new CreateWeatherNoteCommandValidator().Validate(command).IsValid.Should().Be(expectedValid);
     }
 
     [Fact]
