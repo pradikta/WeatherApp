@@ -1,4 +1,4 @@
-@host = http://localhost:5177
+@host = http://localhost:5000
 
 ### Health check
 GET {{host}}/health
