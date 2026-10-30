@@ -90,7 +90,7 @@ Other settings in `appsettings.json`:
 | `Cors:AllowedOrigins` | Origins allowed to call the API | `http://localhost:5173` |
 | `Resilience:*` | Retry, circuit breaker, and timeout tuning (see below) | 2 retries, breaker opens at 50% failures over 10+ calls |
 | `RateLimiting:PermitLimit` / `WindowSeconds` | Fixed-window limit per client IP (`/health` is exempt) | `100` / `60` |
-| `OTEL_EXPORTER_OTLP_ENDPOINT` | OTLP collector for traces and metrics; nothing is exported when unset | unset |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | Standard OpenTelemetry key, read by the SDK from `appsettings.json` or the environment. OTLP collector for traces and metrics; nothing is exported when empty | empty |
 
 Invalid `OpenWeatherMap:BaseAddress` or `Caching` values stop the app at startup (`ValidateOnStart`). A missing API key does not: the app boots, and the weather endpoint returns `500` with the reason in the log.
 

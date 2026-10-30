@@ -75,6 +75,16 @@ public class HardeningTests
     }
 
     [Fact]
+    public void Startup_InvalidRateLimit_FailsFast()
+    {
+        using var factory = CreateFactory(("RateLimiting:PermitLimit", "0"));
+
+        var act = () => factory.CreateClient();
+
+        act.Should().Throw<OptionsValidationException>().WithMessage("*PermitLimit*");
+    }
+
+    [Fact]
     public void Startup_MissingApiKey_StillBoots()
     {
         using var factory = CreateFactory();
