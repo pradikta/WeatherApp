@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.Extensions.Options;
@@ -34,7 +35,9 @@ public sealed class OpenWeatherMapService(HttpClient httpClient, IOptions<OpenWe
         var location = locations.FirstOrDefault()
             ?? throw new CityNotFoundException(cityName);
 
-        var weatherUrl = $"data/2.5/weather?lat={location.Lat}&lon={location.Lon}&appid={apiKey}&units=imperial";
+        var lat = location.Lat.ToString(CultureInfo.InvariantCulture);
+        var lon = location.Lon.ToString(CultureInfo.InvariantCulture);
+        var weatherUrl = $"data/2.5/weather?lat={lat}&lon={lon}&appid={apiKey}&units=imperial";
         var response = await httpClient.GetFromJsonAsync<OpenWeatherMapResponse>(weatherUrl, JsonOptions, cancellationToken)
             ?? throw new InvalidOperationException("Received an empty response from OpenWeatherMap.");
 
