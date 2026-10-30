@@ -23,6 +23,7 @@
 - **Backend Classes/Records/Properties**: `PascalCase` (e.g., `WeatherResponseDto`, `Temperature`).
 - **Backend Interfaces**: `PascalCase` prefixed with `I` (e.g., `IWeatherService`).
 - **Backend Private Fields**: `_camelCase` prefixed with underscore (e.g., `_dbContext`).
+- **Dependency Injection**: prefer primary constructors for DI-injected classes (e.g., `GetCurrentWeatherQueryHandler(IWeatherService weatherService)`).
 - **Frontend Components**: `PascalCase` for component files and function names (e.g., `WeatherDashboard.tsx`, `LocationSelector.tsx`).
 - **Frontend Hooks/Utils**: `camelCase` for non-component files, hooks, and helpers (e.g., `useWeatherApi.ts`, `formatters.ts`).
 - **Async Methods**: MUST end with `Async` suffix in backend (e.g., `GetCurrentWeatherAsync`).
