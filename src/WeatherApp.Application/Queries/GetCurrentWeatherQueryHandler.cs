@@ -1,11 +1,16 @@
 using MediatR;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Options;
 using WeatherApp.Application.Dtos;
 using WeatherApp.Application.Interfaces;
+using WeatherApp.Application.Options;
 
 namespace WeatherApp.Application.Queries;
 
-public sealed class GetCurrentWeatherQueryHandler(IWeatherService weatherService, IMemoryCache cache)
+public sealed class GetCurrentWeatherQueryHandler(
+    IWeatherService weatherService,
+    IMemoryCache cache,
+    IOptions<CachingOptions> cachingOptions)
     : IRequestHandler<GetCurrentWeatherQuery, WeatherResponseDto>
 {
     public async Task<WeatherResponseDto> Handle(GetCurrentWeatherQuery request, CancellationToken cancellationToken)
@@ -19,7 +24,8 @@ public sealed class GetCurrentWeatherQueryHandler(IWeatherService weatherService
 
         var weather = await weatherService.GetCurrentWeatherAsync(request.CityName, cancellationToken);
 
-        cache.Set(cacheKey, weather, TimeSpan.FromMinutes(10));
+        var cacheDuration = TimeSpan.FromMinutes(cachingOptions.Value.WeatherCacheDurationMinutes);
+        cache.Set(cacheKey, weather, cacheDuration);
 
         return weather;
     }
