@@ -1,8 +1,6 @@
 # WeatherApp
 
-ASP.NET Core (.NET 10) Web API that lets a client pick a country and city, view current weather from OpenWeatherMap, and save custom weather notes. Built with Onion Architecture and CQRS (MediatR).
-
-> **Status:** backend and automated tests are complete. The frontend client (`frontend/`) is not implemented yet.
+ASP.NET Core (.NET 10) Web API plus a React + TypeScript client that let a user pick a country and city, view current weather from OpenWeatherMap, and save custom weather notes. Built with Onion Architecture and CQRS (MediatR).
 
 ## Architecture
 
@@ -99,13 +97,32 @@ Invalid `OpenWeatherMap:BaseAddress` or `Caching` values stop the app at startup
 ```powershell
 dotnet restore
 dotnet build
-dotnet run --project src/WeatherApp.Api   # http://localhost:5177
+dotnet run --project src/WeatherApp.Api   # http://localhost:5000
 dotnet test
 ```
 
 Sample requests for every endpoint are in [src/WeatherApp.Api/WeatherApp.Api.http](src/WeatherApp.Api/WeatherApp.Api.http) (VS Code needs the REST Client extension `humao.rest-client`, which is recommended in `.vscode/extensions.json`; Visual Studio and Rider support `.http` files natively). Run the API first.
 
-### 3. Docker (optional)
+### 3. Frontend
+
+Requires Node.js 20+ and a running API on `http://localhost:5000`.
+
+```powershell
+cd frontend
+npm install
+npm run dev     # http://localhost:5173
+npm run build   # type-check and production build into frontend/dist
+```
+
+The client is built with Vite, React, TypeScript, and Tailwind CSS. The dev server proxies `/api` to `http://localhost:5000` (see `frontend/vite.config.ts`), so no CORS setup is needed during development. Layout:
+
+- `src/components/` presentational components: `LocationSelector` (cascading country/city dropdowns), `WeatherCard` (hero card and metric tiles), `WeatherDetails`, `WeatherNoteForm`.
+- `src/services/weatherApi.ts` typed `fetch` client that turns RFC 7807 problem details (400, 404, 429, 502, 503, 504) into user-facing messages.
+- `src/hooks/` data hooks, `src/types/` DTO interfaces, `src/utils/formatters.ts` display helpers.
+
+Wind speed is converted from the API's mph to km/h, and visibility is shown in km or m. Wind and visibility show `N/A` when OpenWeatherMap omits them.
+
+### 4. Docker (optional)
 
 ```powershell
 docker build -t weatherapp .
