@@ -103,6 +103,8 @@ dotnet run --project src/WeatherApp.Api   # http://localhost:5177
 dotnet test
 ```
 
+Sample requests for every endpoint are in [src/WeatherApp.Api/WeatherApp.Api.http](src/WeatherApp.Api/WeatherApp.Api.http) (VS Code needs the REST Client extension `humao.rest-client`, which is recommended in `.vscode/extensions.json`; Visual Studio and Rider support `.http` files natively). Run the API first.
+
 ### 3. Docker (optional)
 
 ```powershell

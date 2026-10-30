@@ -1,0 +1,35 @@
+@host = http://localhost:5177
+
+### Health check
+GET {{host}}/health
+
+### List countries
+GET {{host}}/api/countries
+
+### List cities of a country
+GET {{host}}/api/countries/ID/cities
+
+### Unknown country (200 with an empty list)
+GET {{host}}/api/countries/ZZ/cities
+
+### Current weather (needs a configured OpenWeatherMap key)
+GET {{host}}/api/weather/Jakarta
+
+### Create a weather note
+POST {{host}}/api/weather/notes
+Content-Type: application/json
+
+{
+  "cityName": "Jakarta",
+  "note": "Humid and cloudy this morning"
+}
+
+### Validation error (400, empty note)
+POST {{host}}/api/weather/notes
+Content-Type: application/json
+
+{
+  "cityName": "Jakarta",
+  "note": ""
+}
+
