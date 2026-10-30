@@ -90,7 +90,7 @@ Other settings in `appsettings.json`:
 | `Cors:AllowedOrigins` | Origins allowed to call the API | `http://localhost:5173` |
 | `Resilience:*` | Retry, circuit breaker, and timeout tuning (see below) | 2 retries, breaker opens at 50% failures over 10+ calls |
 | `RateLimiting:PermitLimit` / `WindowSeconds` | Fixed-window limit per client IP (`/health` is exempt) | `100` / `60` |
-| `OTEL_EXPORTER_OTLP_ENDPOINT` | Standard OpenTelemetry key, read by the SDK from `appsettings.json` or the environment. OTLP collector for traces and metrics; nothing is exported when empty | empty |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | Standard OpenTelemetry key, read by the SDK from `appsettings.json` or the environment. OTLP collector for traces, metrics, and logs; nothing is exported when empty | empty |
 
 Invalid `OpenWeatherMap:BaseAddress` or `Caching` values stop the app at startup (`ValidateOnStart`). A missing API key does not: the app boots, and the weather endpoint returns `500` with the reason in the log.
 
@@ -125,7 +125,7 @@ Tests live in `tests/WeatherApp.Tests` (xUnit, Moq, FluentAssertions) and run **
 | `OpenWeatherMapService` | Mocked JSON payloads, request URLs, error and edge cases. |
 | API endpoints | `WebApplicationFactory`: status codes, problem details, CORS, and a full-stack weather flow. |
 | Architecture | Dependency rule between layers. |
-| Hardening | Rate limiting (429 + `Retry-After`, `/health` exempt), startup option validation, and telemetry counters/activity. |
+| Hardening | Rate limiting (429 + `Retry-After`, `/health` exempt), startup option validation, telemetry counters/activity, and OTLP log export against a loopback collector. |
 
 CI (`.github/workflows/ci.yml`) builds and runs the same tests on every push and pull request.
 
@@ -149,8 +149,8 @@ Retry, circuit breaker, and timeout behavior is verified against a failing in-me
 
 ### Operations
 
-- Structured JSON console logging (`AddJsonConsole` with scopes), so each log line carries `TraceId` and `SpanId` for correlation with traces.
-- OpenTelemetry traces (ASP.NET Core, `HttpClient`, and a `FetchCurrentWeather` activity) and metrics (ASP.NET Core, `HttpClient`, runtime, resilience, plus `weather.cache.hits`, `weather.cache.misses`, `weather.notes.created`). Application-layer telemetry uses only BCL types (`ActivitySource`, `Meter`), so that layer has no OpenTelemetry dependency. Export is OTLP and only enabled when `OTEL_EXPORTER_OTLP_ENDPOINT` is set.
+- Structured JSON console logging (`AddJsonConsole` with scopes) is always on and writes to stdout, so each log line carries `TraceId` and `SpanId` for correlation with traces. Container platforms and log shippers can collect stdout directly.
+- OpenTelemetry traces (ASP.NET Core, `HttpClient`, and a `FetchCurrentWeather` activity), metrics (ASP.NET Core, `HttpClient`, runtime, resilience, plus `weather.cache.hits`, `weather.cache.misses`, `weather.notes.created`), and logs. Application-layer telemetry uses only BCL types (`ActivitySource`, `Meter`), so that layer has no OpenTelemetry dependency. All three signals are exported over OTLP, only when `OTEL_EXPORTER_OTLP_ENDPOINT` is set; point it at an OpenTelemetry Collector or a backend that accepts OTLP and forward from there to the aggregator of your choice.
 - Per-IP rate limiting protects the OpenWeatherMap quota. Behind a reverse proxy, configure forwarded headers so the client IP is not the proxy IP.
 - `TimeProvider` is injected wherever the current time is needed, so time is deterministic in tests.
 - CORS is limited to the configured frontend origins.

@@ -13,7 +13,7 @@
 6. **Resilience & Caching**: All external HTTP calls MUST be cached (`IMemoryCache`) and wrapped in resilience policies (Retry/Circuit Breaker) to prevent rate-limiting and handle network faults.
 7. **Code Hygiene**: Clean up unused `using` directives (`IDE0005`) on touched C# files prior to commit.
 8. **Commits**: Follow Conventional Commits format (`feat(scope):`, `fix:`, `test:`, `chore:`). DO NOT use superlative adjectives.
-9. **Observability**: Implement a MediatR `IPipelineBehavior` for global logging (Request/Response). Configure the Api to use structured JSON console logging (container-friendly). Traces and metrics use OpenTelemetry in the Api layer; Application-layer telemetry uses only BCL `ActivitySource`/`Meter` (`WeatherTelemetry`).
+9. **Observability**: Implement a MediatR `IPipelineBehavior` for global logging (Request/Response). Configure the Api to use structured JSON console logging (container-friendly). Traces, metrics, and logs use OpenTelemetry in the Api layer (logs also stay on the console); Application-layer telemetry uses only BCL `ActivitySource`/`Meter` (`WeatherTelemetry`).
 10. **Time & Options**: Inject `TimeProvider` instead of calling `DateTime.UtcNow`. Options classes use data annotations with `ValidateOnStart()`.
 11. **Shared Build Settings**: Put common project properties (target framework, nullable, warnings-as-errors) in `Directory.Build.props`, not in individual `.csproj` files.
 

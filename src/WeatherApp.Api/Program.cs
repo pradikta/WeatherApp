@@ -29,14 +29,21 @@ builder.Configuration.AddCommandLine(args);
 builder.Logging.ClearProviders();
 builder.Logging.AddJsonConsole(options => options.IncludeScopes = true);
 
-// Traces and metrics. OTEL_EXPORTER_OTLP_ENDPOINT is the standard OpenTelemetry key and is read by the SDK
-// itself (appsettings.json or environment); telemetry is exported over OTLP only when it is set.
+
+
+// Traces, metrics, and logs. OTEL_EXPORTER_OTLP_ENDPOINT is the standard OpenTelemetry key and is read by the SDK
+// itself (appsettings.json or environment); everything is exported over OTLP only when it is set.
 var telemetry = builder.Services.AddOpenTelemetry()
     .ConfigureResource(resource => resource.AddService("WeatherApp.Api"))
     .WithTracing(tracing => tracing
         .AddAspNetCoreInstrumentation()
         .AddHttpClientInstrumentation()
         .AddSource(WeatherTelemetry.Name))
+    .WithLogging(logging => { }, options =>
+    {
+        options.IncludeScopes = true;
+        options.IncludeFormattedMessage = true;
+    })
     .WithMetrics(metrics => metrics
         .AddAspNetCoreInstrumentation()
         .AddHttpClientInstrumentation()
