@@ -6,14 +6,14 @@ ASP.NET Core (.NET 10) Web API plus a React + TypeScript client that let a user 
 
 The solution follows Onion Architecture: source dependencies point inward only.
 
-```
+```text
 Api ──► Application ──► Domain
  │          ▲
  └──► Infrastructure ──┘   (Infrastructure implements Application interfaces)
 ```
 
 | Project | Responsibility |
-|---|---|
+| --- | --- |
 | `WeatherApp.Domain` | Entities (`Country`, `City`, `WeatherNote`) and the `Temperature` value object. Pure C#, no NuGet packages, no references to other projects. |
 | `WeatherApp.Application` | CQRS requests and handlers (MediatR), DTOs, FluentValidation validators, pipeline behaviors, and abstractions (`IWeatherService`, `ICountryRepository`, `IWeatherNoteRepository`). |
 | `WeatherApp.Infrastructure` | EF Core `ApplicationDbContext` (SQLite in-memory), repositories, and `OpenWeatherMapService` (HTTP client). |
@@ -29,7 +29,7 @@ Api ──► Application ──► Domain
 ### Naming conventions
 
 | Item | Convention | Example |
-|---|---|---|
+| --- | --- | --- |
 | Projects and namespaces | PascalCase, even for acronyms of 3+ letters | `WeatherApp.Api` (not `WeatherApp.API`) |
 | Classes, records, properties | PascalCase | `WeatherResponseDto`, `Temperature` |
 | Interfaces | `I` prefix | `IWeatherService` |
@@ -62,7 +62,7 @@ The React client in `frontend/src` is split into `components/` (PascalCase files
 ## API
 
 | Method | Route | Description |
-|---|---|---|
+| --- | --- | --- |
 | GET | `/api/countries` | All countries, ordered by name. |
 | GET | `/api/countries/{countryCode}/cities` | Cities of a country (2-letter ISO code). |
 | GET | `/api/weather/{cityName}` | Current weather for a city. |
@@ -77,7 +77,7 @@ The weather response contains: `location` ("City, Country"), `timeUtc`, `windSpe
 All errors use RFC 7807 Problem Details (`application/problem+json`):
 
 | Cause | Status |
-|---|---|
+| --- | --- |
 | Validation failure (includes per-field `errors`) | 400 |
 | City not found | 404 |
 | OpenWeatherMap unreachable or rejected the request (after retries) | 502 |
@@ -99,11 +99,11 @@ Requirements: [.NET 10 SDK](https://dotnet.microsoft.com/download), Node.js 20+ 
 5. Open the app.
 
 | What | URL |
-|---|---|
-| Frontend | http://localhost:5173 |
-| API | http://localhost:5000 (health check at `/health`) |
-| Grafana (logs, traces, metrics) | http://localhost:3001 |
-| Jaeger / Prometheus | http://localhost:16686 / http://localhost:9090 |
+| --- | --- |
+| Frontend | <http://localhost:5173> |
+| API | <http://localhost:5000> (health check at `/health`) |
+| Grafana (logs, traces, metrics) | <http://localhost:3001> |
+| Jaeger / Prometheus | <http://localhost:16686> / <http://localhost:9090> |
 
 If `OTEL_EXPORTER_OTLP_ENDPOINT` is set but the stack is not running, the API still works; telemetry is simply not delivered.
 
@@ -129,7 +129,7 @@ Copy-Item src/WeatherApp.Api/appsettings.Local.example.json src/WeatherApp.Api/a
 Other settings in `appsettings.json`:
 
 | Key | Purpose | Default |
-|---|---|---|
+| --- | --- | --- |
 | `OpenWeatherMap:BaseAddress` | OpenWeatherMap base URL | `https://api.openweathermap.org/` |
 | `Caching:WeatherCacheDurationMinutes` | How long a city's weather is cached | `1` |
 | `Cors:AllowedOrigins` | Origins allowed to call the API | `http://localhost:5173` |
@@ -211,10 +211,10 @@ dotnet run --project src/WeatherApp.Api
 ```
 
 | Tool | URL | What to look at |
-|---|---|---|
-| Grafana | http://localhost:3001 | No login. **Explore** with the Loki datasource, for example `{service_name="WeatherApp.Api"}` or `{service_name="WeatherApp.Api"} \| detected_level="error"`. The `TraceId` field on a log line links to the trace in Jaeger. Prometheus and Jaeger are provisioned as datasources too. |
-| Jaeger | http://localhost:16686 | Service `WeatherApp.Api`. One weather request is one trace: the request, `FetchCurrentWeather`, the geocoding call, and the weather call as separate spans (one per retry). |
-| Prometheus | http://localhost:9090 | `weather_cache_hits_total`, `weather_cache_misses_total`, `http_server_request_duration_seconds_count`, `http_client_request_duration_seconds_count`. |
+| --- | --- | --- |
+| Grafana | <http://localhost:3001> | No login. **Explore** with the Loki datasource, for example `{service_name="WeatherApp.Api"}` or `{service_name="WeatherApp.Api"} \| detected_level="error"`. The `TraceId` field on a log line links to the trace in Jaeger. Prometheus and Jaeger are provisioned as datasources too. |
+| Jaeger | <http://localhost:16686> | Service `WeatherApp.Api`. One weather request is one trace: the request, `FetchCurrentWeather`, the geocoding call, and the weather call as separate spans (one per retry). |
+| Prometheus | <http://localhost:9090> | `weather_cache_hits_total`, `weather_cache_misses_total`, `http_server_request_duration_seconds_count`, `http_client_request_duration_seconds_count`. |
 
 Grafana is published on host port 3001 because 3000 is commonly taken by other local apps. Metrics are exported every 60 seconds, so allow up to a minute before they appear in Prometheus. Logs also stay on the API's stdout as JSON. Loki has no UI of its own (its API is on port 3100), so use Grafana to read logs. Stop the stack with `docker compose -f observability/docker-compose.yml down`.
 
@@ -223,7 +223,7 @@ Grafana is published on host port 3001 because 3000 is commonly taken by other l
 Tests live in `tests/WeatherApp.Tests` (xUnit, Moq, FluentAssertions) and run **fully offline**: no test calls the network. External HTTP is replaced by an in-memory `HttpMessageHandler`.
 
 | Area | What is verified |
-|---|---|
+| --- | --- |
 | Domain | `Temperature` at freezing (32°F), boiling (212°F), negative values, absolute zero, and rounding. |
 | Query handlers | Isolated with mocked dependencies, including weather caching. |
 | Command handler | Against SQLite in-memory: the note is persisted, read back through a fresh context, and gets a unique id. |
@@ -233,7 +233,7 @@ Tests live in `tests/WeatherApp.Tests` (xUnit, Moq, FluentAssertions) and run **
 | Architecture | Dependency rule between layers. |
 | Hardening | Rate limiting (429 + `Retry-After`, `/health` exempt), startup option validation, telemetry counters/activity, and OTLP log export against a loopback collector. |
 
-CI (`.github/workflows/ci.yml`) runs on every push and pull request to `main`: `dotnet restore`, `dotnet build --no-restore`, `dotnet test --no-build` on `ubuntu-latest`, plus frontend lint, tests, and build.
+CI (`.github/workflows/ci.yml`) runs on every push and pull request to `main`: `dotnet restore`, `dotnet build --no-restore`, `dotnet test --no-build` on `ubuntu-latest`, plus frontend lint, tests, and build, and a `docker compose build` check.
 
 Retry, circuit breaker, and timeout behavior is verified against a failing in-memory upstream (`ResilienceTests`).
 
