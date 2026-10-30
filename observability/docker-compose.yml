@@ -1,7 +1,9 @@
-# Local observability stack: the API exports OTLP to the collector, which fans out to Jaeger (traces)
-# and Prometheus (metrics). For local development only; there is no authentication or persistence.
+# Local observability stack: the API exports OTLP to the collector, which fans out to Jaeger (traces),
+# Prometheus (metrics), and Loki (logs). Grafana ties them together. For local development only; there is
+# no real authentication and no persistence.
 #
 #   docker compose -f observability/docker-compose.yml up -d
+#   Grafana UI:     http://localhost:3001  (logs, traces, metrics; no login)
 #   Jaeger UI:      http://localhost:16686
 #   Prometheus UI:  http://localhost:9090
 services:
@@ -15,6 +17,31 @@ services:
       - "4318:4318" # OTLP HTTP
     depends_on:
       - jaeger
+      - loki
+
+  loki:
+    image: grafana/loki:3.6.0
+    command: ["-config.file=/etc/loki/loki.yaml"]
+    volumes:
+      - ./loki.yaml:/etc/loki/loki.yaml:ro
+    ports:
+      - "3100:3100" # HTTP API (no UI; use Grafana)
+
+  grafana:
+    image: grafana/grafana-oss:12.1.0
+    environment:
+      # Local only: anonymous admin access so no login is needed.
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Admin
+      GF_AUTH_DISABLE_LOGIN_FORM: "true"
+    volumes:
+      - ./grafana-datasources.yaml:/etc/grafana/provisioning/datasources/datasources.yaml:ro
+    ports:
+      - "3001:3000" # UI (host port 3001 to avoid clashing with other local apps on 3000)
+    depends_on:
+      - loki
+      - jaeger
+      - prometheus
 
   jaeger:
     image: jaegertracing/jaeger:2.11.0

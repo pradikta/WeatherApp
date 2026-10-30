@@ -134,7 +134,7 @@ The image runs as a non-root user on port 8080. TLS is expected to terminate at 
 
 ### 5. Local observability (optional)
 
-A Docker Compose stack in `observability/` runs an OpenTelemetry Collector, Jaeger (traces), and Prometheus (metrics) so telemetry can be inspected locally. It is for development only: no authentication and no persistence.
+A Docker Compose stack in `observability/` runs an OpenTelemetry Collector, Jaeger (traces), Prometheus (metrics), Loki (logs), and Grafana (UI over all three) so telemetry can be inspected locally. It is for development only: no real authentication (Grafana allows anonymous admin access) and no persistence.
 
 ```powershell
 docker compose -f observability/docker-compose.yml up -d
@@ -146,10 +146,11 @@ dotnet run --launch-profile http
 
 | Tool | URL | What to look at |
 |---|---|---|
+| Grafana | http://localhost:3001 | No login. **Explore** with the Loki datasource, for example `{service_name="WeatherApp.Api"}` or `{service_name="WeatherApp.Api"} \| detected_level="error"`. The `TraceId` field on a log line links to the trace in Jaeger. Prometheus and Jaeger are provisioned as datasources too. |
 | Jaeger | http://localhost:16686 | Service `WeatherApp.Api`. One weather request is one trace: the request, `FetchCurrentWeather`, the geocoding call, and the weather call as separate spans (one per retry). |
 | Prometheus | http://localhost:9090 | `weather_cache_hits_total`, `weather_cache_misses_total`, `http_server_request_duration_seconds_count`, `http_client_request_duration_seconds_count`. |
 
-Metrics are exported every 60 seconds, so allow up to a minute before they appear in Prometheus. Logs stay on the API's stdout as JSON. The collector only prints a summary of them. Stop the stack with `docker compose -f observability/docker-compose.yml down`.
+Grafana is published on host port 3001 because 3000 is commonly taken by other local apps. Metrics are exported every 60 seconds, so allow up to a minute before they appear in Prometheus. Logs also stay on the API's stdout as JSON. Loki has no UI of its own (its API is on port 3100), so use Grafana to read logs. Stop the stack with `docker compose -f observability/docker-compose.yml down`.
 
 ## Testing
 

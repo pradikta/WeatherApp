@@ -19,7 +19,9 @@ exporters:
     endpoint: 0.0.0.0:8889
     resource_to_telemetry_conversion:
       enabled: true
-  # Logs are only printed here; they also stay on the API's stdout as JSON.
+  # Loki 3 ingests OTLP natively; the trace id is kept as structured metadata for log-to-trace links.
+  otlphttp/loki:
+    endpoint: http://loki:3100/otlp
   debug:
     verbosity: basic
 
@@ -36,4 +38,4 @@ service:
     logs:
       receivers: [otlp]
       processors: [batch]
-      exporters: [debug]
+      exporters: [otlphttp/loki]
