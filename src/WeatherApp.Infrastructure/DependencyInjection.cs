@@ -14,7 +14,10 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
-        services.Configure<OpenWeatherMapOptions>(configuration.GetSection(OpenWeatherMapOptions.SectionName));
+        services.AddOptions<OpenWeatherMapOptions>()
+            .Bind(configuration.GetSection(OpenWeatherMapOptions.SectionName))
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
 
         // Keep a single open connection so the in-memory SQLite database persists
         // across DbContext instances (each new connection gets its own empty database).

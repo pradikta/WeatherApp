@@ -1,5 +1,6 @@
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Time.Testing;
 using WeatherApp.Application.Commands;
 using WeatherApp.Infrastructure.Repositories;
 using WeatherApp.Tests.Support;
@@ -9,6 +10,7 @@ namespace WeatherApp.Tests.Application;
 public sealed class CreateWeatherNoteCommandHandlerTests : IDisposable
 {
     private readonly SqliteTestDatabase _database = new();
+    private readonly FakeTimeProvider _clock = new(new DateTimeOffset(2026, 1, 15, 8, 30, 0, TimeSpan.Zero));
 
     public void Dispose() => _database.Dispose();
 
@@ -16,7 +18,7 @@ public sealed class CreateWeatherNoteCommandHandlerTests : IDisposable
     public async Task Handle_PersistsNoteAndReturnsCreatedIdentifier()
     {
         await using var writeContext = _database.CreateContext();
-        var handler = new CreateWeatherNoteCommandHandler(new WeatherNoteRepository(writeContext));
+        var handler = new CreateWeatherNoteCommandHandler(new WeatherNoteRepository(writeContext), _clock);
 
         var result = await handler.Handle(
             new CreateWeatherNoteCommand("Jakarta", "Humid afternoon"),
@@ -25,7 +27,7 @@ public sealed class CreateWeatherNoteCommandHandlerTests : IDisposable
         result.Id.Should().NotBeEmpty();
         result.CityName.Should().Be("Jakarta");
         result.Note.Should().Be("Humid afternoon");
-        result.CreatedAtUtc.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromSeconds(5));
+        result.CreatedAtUtc.Should().Be(_clock.GetUtcNow().UtcDateTime);
 
         // Read through a fresh context to prove the row is really stored, not just tracked.
         await using var readContext = _database.CreateContext();
@@ -40,7 +42,7 @@ public sealed class CreateWeatherNoteCommandHandlerTests : IDisposable
     public async Task Handle_CalledTwice_PersistsTwoNotesWithDistinctIds()
     {
         await using var context = _database.CreateContext();
-        var handler = new CreateWeatherNoteCommandHandler(new WeatherNoteRepository(context));
+        var handler = new CreateWeatherNoteCommandHandler(new WeatherNoteRepository(context), _clock);
 
         var first = await handler.Handle(new CreateWeatherNoteCommand("Tokyo", "One"), CancellationToken.None);
         var second = await handler.Handle(new CreateWeatherNoteCommand("Tokyo", "Two"), CancellationToken.None);

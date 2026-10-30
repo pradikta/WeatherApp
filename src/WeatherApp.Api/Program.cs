@@ -1,3 +1,10 @@
+using System.Globalization;
+using System.Threading.RateLimiting;
+using Microsoft.AspNetCore.RateLimiting;
+using OpenTelemetry;
+using OpenTelemetry.Metrics;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
 using WeatherApp.Api.Endpoints;
 using WeatherApp.Api.Middleware;
 using WeatherApp.Application;
@@ -16,12 +23,15 @@ builder.Configuration.AddCommandLine(args);
 
 // Structured JSON console logging (container-friendly).
 builder.Logging.ClearProviders();
-builder.Logging.AddJsonConsole();
+builder.Logging.AddJsonConsole(options => options.IncludeScopes = true);
 
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
 
-builder.Services.Configure<CachingOptions>(builder.Configuration.GetSection(CachingOptions.SectionName));
+builder.Services.AddOptions<CachingOptions>()
+    .Bind(builder.Configuration.GetSection(CachingOptions.SectionName))
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
 
 // Standardizes unhandled exceptions and bare HTTP status codes into RFC 7807 Problem Details.
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
@@ -44,6 +54,53 @@ builder.Services.AddCors(options =>
 builder.Services.ConfigureHttpClientDefaults(clientBuilder =>
     clientBuilder.AddStandardResilienceHandler());
 
+// Per-client fixed-window rate limit protecting the shared OpenWeatherMap quota. Health probes are exempt.
+var rateLimiting = builder.Configuration.GetSection("RateLimiting");
+var permitLimit = rateLimiting.GetValue("PermitLimit", 100);
+var windowSeconds = rateLimiting.GetValue("WindowSeconds", 60);
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.OnRejected = (context, _) =>
+    {
+        if (context.Lease.TryGetMetadata(MetadataName.RetryAfter, out var retryAfter))
+        {
+            context.HttpContext.Response.Headers.RetryAfter =
+                ((int)retryAfter.TotalSeconds).ToString(CultureInfo.InvariantCulture);
+        }
+
+        return ValueTask.CompletedTask;
+    };
+    options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(httpContext =>
+        httpContext.Request.Path.StartsWithSegments("/health")
+            ? RateLimitPartition.GetNoLimiter("health")
+            : RateLimitPartition.GetFixedWindowLimiter(
+                httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                _ => new FixedWindowRateLimiterOptions
+                {
+                    PermitLimit = permitLimit,
+                    Window = TimeSpan.FromSeconds(windowSeconds),
+                    QueueLimit = 0
+                }));
+});
+
+// Traces and metrics; exported over OTLP only when OTEL_EXPORTER_OTLP_ENDPOINT is set.
+var otel = builder.Services.AddOpenTelemetry()
+    .ConfigureResource(resource => resource.AddService("WeatherApp.Api"))
+    .WithTracing(tracing => tracing
+        .AddAspNetCoreInstrumentation()
+        .AddHttpClientInstrumentation()
+        .AddSource(WeatherTelemetry.Name))
+    .WithMetrics(metrics => metrics
+        .AddAspNetCoreInstrumentation()
+        .AddHttpClientInstrumentation()
+        .AddRuntimeInstrumentation()
+        .AddMeter(WeatherTelemetry.Name, "Polly"));
+if (!string.IsNullOrWhiteSpace(builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"]))
+{
+    otel.UseOtlpExporter();
+}
+
 // OpenAPI document generation (exposed only in Development below).
 builder.Services.AddOpenApi();
 
@@ -61,6 +118,7 @@ using (var scope = app.Services.CreateScope())
 app.UseExceptionHandler();
 app.UseStatusCodePages();
 app.UseCors("AllowFrontend");
+app.UseRateLimiter();
 
 // Expose the OpenAPI specification only in Development to avoid information disclosure in Production.
 if (app.Environment.IsDevelopment())

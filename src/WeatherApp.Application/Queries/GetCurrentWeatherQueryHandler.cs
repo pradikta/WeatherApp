@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using MediatR;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
@@ -19,9 +20,15 @@ public sealed class GetCurrentWeatherQueryHandler(
 
         if (cache.TryGetValue(cacheKey, out WeatherResponseDto? cached) && cached is not null)
         {
+            WeatherTelemetry.CacheHits.Add(1);
+            Activity.Current?.SetTag("weather.cache.hit", true);
             return cached;
         }
 
+        WeatherTelemetry.CacheMisses.Add(1);
+        Activity.Current?.SetTag("weather.cache.hit", false);
+
+        using var activity = WeatherTelemetry.ActivitySource.StartActivity("FetchCurrentWeather");
         var weather = await weatherService.GetCurrentWeatherAsync(request.CityName, cancellationToken);
 
         var cacheDuration = TimeSpan.FromMinutes(cachingOptions.Value.WeatherCacheDurationMinutes);
