@@ -70,7 +70,7 @@
 ### 4. Api Layer (`src/WeatherApp.Api/`)
 
 - Minimal APIs routing directly to MediatR pipeline.
-- **Resilience**: MUST apply `Microsoft.Extensions.Http.Resilience` (`.AddStandardResilienceHandler()`) to all external `HttpClient` DI registrations.
+- **Resilience**: MUST apply `Microsoft.Extensions.Http.Resilience` (`.AddStandardResilienceHandler()`) to all external `HttpClient` DI registrations, tuned via the `Resilience` config section (do not rely on library defaults).
 - **Error Handling**: Map exceptions globally to RFC 7807 Problem Details format (`application/problem+json`) via `GlobalExceptionHandler` (validation → 400, `CityNotFoundException` → 404, upstream `HttpRequestException` → 502).
 - **Local Secrets**: NEVER commit API keys. Set `OpenWeatherMap:ApiKey` in the git-ignored `src/WeatherApp.Api/appsettings.Local.json` (copy from `appsettings.Local.example.json`) or via environment variables.
 - **CORS**: Configure and enable CORS policy to support frontend client integration.

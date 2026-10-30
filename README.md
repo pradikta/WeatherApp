@@ -53,7 +53,9 @@ All errors use RFC 7807 Problem Details (`application/problem+json`):
 |---|---|
 | Validation failure (includes per-field `errors`) | 400 |
 | City not found | 404 |
-| OpenWeatherMap unreachable or rejected the request | 502 |
+| OpenWeatherMap unreachable or rejected the request (after retries) | 502 |
+| Circuit breaker open (calls paused after repeated failures) | 503 |
+| OpenWeatherMap did not respond in time | 504 |
 | Rate limit exceeded (includes `Retry-After`) | 429 |
 | Any other unhandled exception | 500 |
 
@@ -86,6 +88,7 @@ Other settings in `appsettings.json`:
 | `OpenWeatherMap:BaseAddress` | OpenWeatherMap base URL | `https://api.openweathermap.org/` |
 | `Caching:WeatherCacheDurationMinutes` | How long a city's weather is cached | `1` |
 | `Cors:AllowedOrigins` | Origins allowed to call the API | `http://localhost:5173` |
+| `Resilience:*` | Retry, circuit breaker, and timeout tuning (see below) | 2 retries, breaker opens at 50% failures over 10+ calls |
 | `RateLimiting:PermitLimit` / `WindowSeconds` | Fixed-window limit per client IP (`/health` is exempt) | `100` / `60` |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | OTLP collector for traces and metrics; nothing is exported when unset | unset |
 
@@ -126,7 +129,7 @@ Tests live in `tests/WeatherApp.Tests` (xUnit, Moq, FluentAssertions) and run **
 
 CI (`.github/workflows/ci.yml`) builds and runs the same tests on every push and pull request.
 
-Known gap: retry and circuit breaker behavior of the resilience handler is not covered by tests.
+Retry, circuit breaker, and timeout behavior is verified against a failing in-memory upstream (`ResilienceTests`).
 
 ## Design notes
 
@@ -142,7 +145,7 @@ Known gap: retry and circuit breaker behavior of the resilience handler is not c
 - `IWeatherService` hides OpenWeatherMap from the rest of the app. `OpenWeatherMapService` geocodes the city name to coordinates first (the by-city-name weather query is deprecated), then fetches weather by latitude and longitude.
 - OpenWeatherMap does not return a dew point, so it is computed with the Magnus formula (humidity is clamped to at least 1% to avoid `log(0)`).
 - Results are cached with `IMemoryCache`; failures are not cached.
-- `AddStandardResilienceHandler()` (retry, circuit breaker, timeout) is applied to all `HttpClient` registrations through `ConfigureHttpClientDefaults`.
+- `AddStandardResilienceHandler()` (retry, circuit breaker, timeout) is applied to all `HttpClient` registrations through `ConfigureHttpClientDefaults` and bound to the `Resilience` section. The library defaults need 100 requests in 30 seconds before the breaker can open, which this app would never reach, so `appsettings.json` lowers that to 10. Each weather request makes two upstream calls (geocoding, then weather), so keep `Retry:MaxRetryAttempts` low to protect the API key quota.
 
 ### Operations
 

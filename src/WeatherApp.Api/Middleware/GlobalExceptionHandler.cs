@@ -1,6 +1,8 @@
 using FluentValidation;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
+using Polly.CircuitBreaker;
+using Polly.Timeout;
 using WeatherApp.Application.Exceptions;
 
 namespace WeatherApp.Api.Middleware;
@@ -33,6 +35,18 @@ public sealed class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logge
                 Status = StatusCodes.Status502BadGateway,
                 Title = "Weather provider unavailable",
                 Detail = "The external weather service could not be reached or rejected the request."
+            },
+            BrokenCircuitException => new ProblemDetails
+            {
+                Status = StatusCodes.Status503ServiceUnavailable,
+                Title = "Weather provider temporarily unavailable",
+                Detail = "Requests to the external weather service are paused after repeated failures. Try again shortly."
+            },
+            TimeoutRejectedException => new ProblemDetails
+            {
+                Status = StatusCodes.Status504GatewayTimeout,
+                Title = "Weather provider timed out",
+                Detail = "The external weather service did not respond in time."
             },
             _ => null
         };

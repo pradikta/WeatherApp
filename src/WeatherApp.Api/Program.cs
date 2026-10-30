@@ -50,9 +50,11 @@ builder.Services.AddCors(options =>
             .AllowAnyMethod());
 });
 
-// Apply the standard resilience pipeline (retry + circuit breaker) to all HttpClient clients.
+// Standard resilience pipeline (retry, circuit breaker, timeouts) for all HttpClient clients,
+// tuned through the "Resilience" section because the defaults need 100 requests to open the breaker.
+var resilienceSection = builder.Configuration.GetSection("Resilience");
 builder.Services.ConfigureHttpClientDefaults(clientBuilder =>
-    clientBuilder.AddStandardResilienceHandler());
+    clientBuilder.AddStandardResilienceHandler(resilienceSection));
 
 // Per-client fixed-window rate limit protecting the shared OpenWeatherMap quota. Health probes are exempt.
 var rateLimiting = builder.Configuration.GetSection("RateLimiting");

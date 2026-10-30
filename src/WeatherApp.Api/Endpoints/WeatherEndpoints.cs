@@ -47,7 +47,9 @@ public static class WeatherEndpoints
             .ProducesProblem(StatusCodes.Status400BadRequest)
             .ProducesProblem(StatusCodes.Status404NotFound)
             .ProducesProblem(StatusCodes.Status500InternalServerError)
-            .ProducesProblem(StatusCodes.Status502BadGateway);
+            .ProducesProblem(StatusCodes.Status502BadGateway)
+            .ProducesProblem(StatusCodes.Status503ServiceUnavailable)
+            .ProducesProblem(StatusCodes.Status504GatewayTimeout);
 
         endpoints.MapPost("/api/weather/notes", async (CreateWeatherNoteCommand command, ISender sender, CancellationToken cancellationToken) =>
         {
