@@ -1,0 +1,15 @@
+services:
+  api:
+    build: .
+    environment:
+      # Set OPENWEATHERMAP_API_KEY in your shell or a git-ignored .env file.
+      OpenWeatherMap__ApiKey: ${OPENWEATHERMAP_API_KEY:?Set OPENWEATHERMAP_API_KEY}
+    restart: unless-stopped
+
+  web:
+    build: ./frontend
+    ports:
+      - "5173:80"
+    depends_on:
+      - api
+    restart: unless-stopped

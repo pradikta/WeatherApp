@@ -1,4 +1,4 @@
-# WeatherApp
+# WeatherApp - Clean Architecture .NET 10 API
 
 ASP.NET Core (.NET 10) Web API plus a React + TypeScript client that let a user pick a country and city, view current weather from OpenWeatherMap, and save custom weather notes. Built with Onion Architecture and CQRS (MediatR).
 
@@ -26,9 +26,38 @@ Api ──► Application ──► Domain
 - Endpoints know nothing about EF Core or HTTP clients; they depend only on MediatR. Handlers know only interfaces, so they are unit-tested with mocks or an in-memory database.
 - Two MediatR pipeline behaviors wrap every request: `ValidationBehavior` (FluentValidation, throws `ValidationException`) and `LoggingBehavior` (payload and elapsed time).
 
-### Temperature conversion
+### Naming conventions
 
-OpenWeatherMap is called with `units=imperial`. The conversion to Celsius lives only in the domain `Temperature` value object: `Math.Round((fahrenheit - 32) * 5 / 9, 2)`.
+| Item | Convention | Example |
+|---|---|---|
+| Projects and namespaces | PascalCase, even for acronyms of 3+ letters | `WeatherApp.Api` (not `WeatherApp.API`) |
+| Classes, records, properties | PascalCase | `WeatherResponseDto`, `Temperature` |
+| Interfaces | `I` prefix | `IWeatherService` |
+| Private fields | `_camelCase` | `_dbContext` |
+| Async methods | `Async` suffix | `GetCurrentWeatherAsync` |
+| CQRS objects | `Command` / `Query` / `Handler` suffix | `GetCurrentWeatherQuery`, `GetCurrentWeatherQueryHandler` |
+| Dependency injection | Primary constructors | `GetCurrentWeatherQueryHandler(IWeatherService weatherService)` |
+
+### Domain business logic
+
+OpenWeatherMap is called with `units=imperial`. The Fahrenheit-to-Celsius conversion lives only in the domain `Temperature` value object (`Math.Round((fahrenheit - 32) * 5 / 9, 2)`), so no other layer re-implements it.
+
+### Performance, Resilience and Observability
+
+- **Caching**: `IMemoryCache` caches weather results per city (`Caching:WeatherCacheDurationMinutes`); failures are never cached.
+- **Resilience**: `Microsoft.Extensions.Http.Resilience` (`AddStandardResilienceHandler()`) gives every external `HttpClient` a retry policy, a circuit breaker, and timeouts.
+- **Pipeline logging**: the MediatR `LoggingBehavior` logs every request and response with elapsed time.
+- **Structured logging**: JSON console logging to stdout (container friendly), with `TraceId`/`SpanId` on each line.
+- **Telemetry**: OpenTelemetry traces, metrics, and logs over OTLP (section 5 of Setup).
+
+### Error handling and security
+
+- Every error is returned as RFC 7807 Problem Details (`application/problem+json`); see [Errors](#errors).
+- CORS only allows the origins in `Cors:AllowedOrigins`. Per-IP rate limiting protects the OpenWeatherMap quota. The API key is never committed (git-ignored `appsettings.Local.json` or environment variables) and does not appear in logs or trace URLs.
+
+### Frontend best practices
+
+The React client in `frontend/src` is split into `components/` (PascalCase files such as `WeatherCard.tsx`), `hooks/` and `utils/` (camelCase such as `useWeatherApi.ts`, `formatters.ts`), `services/` (typed API client), and `types/` (strict TypeScript interfaces that mirror the backend DTOs). Styling uses Tailwind CSS utility classes.
 
 ## API
 
@@ -150,6 +179,16 @@ docker run --rm -p 8080:8080 -e OpenWeatherMap__ApiKey=<your key> weatherapp
 
 The image runs as a non-root user on port 8080. TLS is expected to terminate at a reverse proxy or ingress, so the app itself does not redirect to HTTPS.
 
+#### Docker Compose (API + frontend)
+
+The root `docker-compose.yml` runs the API and the frontend (nginx serving the built client and proxying `/api` to the API, so no CORS is needed). Provide the key through the environment or a git-ignored `.env` file (template: `.env.example`):
+
+```powershell
+Copy-Item .env.example .env   # then edit the key
+docker compose up --build     # http://localhost:5173
+docker compose down
+```
+
 ### 5. Local observability (optional)
 
 A Docker Compose stack in `observability/` runs an OpenTelemetry Collector, Jaeger (traces), Prometheus (metrics), Loki (logs), and Grafana (UI over all three) so telemetry can be inspected locally. It is for development only: no real authentication (Grafana allows anonymous admin access) and no persistence.
@@ -194,7 +233,7 @@ Tests live in `tests/WeatherApp.Tests` (xUnit, Moq, FluentAssertions) and run **
 | Architecture | Dependency rule between layers. |
 | Hardening | Rate limiting (429 + `Retry-After`, `/health` exempt), startup option validation, telemetry counters/activity, and OTLP log export against a loopback collector. |
 
-CI (`.github/workflows/ci.yml`) builds and runs the same tests on every push and pull request.
+CI (`.github/workflows/ci.yml`) runs on every push and pull request to `main`: `dotnet restore`, `dotnet build --no-restore`, `dotnet test --no-build` on `ubuntu-latest`, plus frontend lint, tests, and build.
 
 Retry, circuit breaker, and timeout behavior is verified against a failing in-memory upstream (`ResilienceTests`).
 
