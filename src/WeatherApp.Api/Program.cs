@@ -1,10 +1,16 @@
 using WeatherApp.Api.Endpoints;
+using WeatherApp.Api.Middleware;
 using WeatherApp.Application;
 using WeatherApp.Application.Options;
 using WeatherApp.Infrastructure;
 using WeatherApp.Infrastructure.Data;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Untracked local overrides (e.g. OpenWeatherMap:ApiKey); see appsettings.Local.example.json.
+builder.Configuration.AddJsonFile("appsettings.Local.json", optional: true, reloadOnChange: true);
+builder.Configuration.AddEnvironmentVariables();
+builder.Configuration.AddCommandLine(args);
 
 // --- 1. Service Registrations ---
 
@@ -18,16 +24,18 @@ builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.Configure<CachingOptions>(builder.Configuration.GetSection(CachingOptions.SectionName));
 
 // Standardizes unhandled exceptions and bare HTTP status codes into RFC 7807 Problem Details.
+builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
 
 // Exposes operational endpoints for container orchestrators (liveness/readiness probes).
 builder.Services.AddHealthChecks();
 
-// CORS policy for the frontend client.
+// CORS policy for the frontend client, restricted to the configured origins.
+var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
-        policy.AllowAnyOrigin()
+        policy.WithOrigins(allowedOrigins)
             .AllowAnyHeader()
             .AllowAnyMethod());
 });

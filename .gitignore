@@ -487,5 +487,8 @@ frontend/dist/
 frontend/.venv/
 *.log
 
+# Local secrets/config (API keys); copy appsettings.Local.example.json to create
+appsettings.Local.json
+
 # Local AI tools configs
 .clinerules
