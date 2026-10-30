@@ -2,6 +2,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.Extensions.Options;
 using WeatherApp.Application.Dtos;
+using WeatherApp.Application.Exceptions;
 using WeatherApp.Application.Interfaces;
 using WeatherApp.Domain.ValueObjects;
 
@@ -18,6 +19,12 @@ public sealed class OpenWeatherMapService(HttpClient httpClient, IOptions<OpenWe
     {
         var apiKey = options.Value.ApiKey;
 
+        if (string.IsNullOrWhiteSpace(apiKey))
+        {
+            throw new InvalidOperationException(
+                "OpenWeatherMap:ApiKey is not configured. Set it in appsettings.Local.json or via environment variables.");
+        }
+
         // The by-city-name weather query is deprecated, so geocode the city name to
         // coordinates first and then query current weather by latitude/longitude.
         var geocodeUrl = $"geo/1.0/direct?q={Uri.EscapeDataString(cityName)}&limit=1&appid={apiKey}";
@@ -25,7 +32,7 @@ public sealed class OpenWeatherMapService(HttpClient httpClient, IOptions<OpenWe
             ?? throw new InvalidOperationException("Received an empty response from the OpenWeatherMap geocoding API.");
 
         var location = locations.FirstOrDefault()
-            ?? throw new InvalidOperationException($"City '{cityName}' was not found.");
+            ?? throw new CityNotFoundException(cityName);
 
         var weatherUrl = $"data/2.5/weather?lat={location.Lat}&lon={location.Lon}&appid={apiKey}&units=imperial";
         var response = await httpClient.GetFromJsonAsync<OpenWeatherMapResponse>(weatherUrl, JsonOptions, cancellationToken)
@@ -60,7 +67,8 @@ public sealed class OpenWeatherMapService(HttpClient httpClient, IOptions<OpenWe
         const double a = 17.625;
         const double b = 243.04;
 
-        var gamma = Math.Log(humidity / 100) + (a * celsius) / (b + celsius);
+        // Clamp to avoid Math.Log(0) producing NaN/-Infinity at 0% humidity.
+        var gamma = Math.Log(Math.Clamp(humidity, 1, 100) / 100) + (a * celsius) / (b + celsius);
 
         return b * gamma / (a - gamma);
     }
