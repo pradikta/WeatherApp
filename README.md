@@ -59,7 +59,24 @@ All errors use RFC 7807 Problem Details (`application/problem+json`):
 
 ## Setup
 
-Requirements: [.NET 10 SDK](https://dotnet.microsoft.com/download) and a free [OpenWeatherMap API key](https://openweathermap.org/api).
+Requirements: [.NET 10 SDK](https://dotnet.microsoft.com/download), Node.js 20+ for the frontend, Docker (only for the optional observability stack and image), and a free [OpenWeatherMap API key](https://openweathermap.org/api).
+
+### Quick start (local)
+
+1. Create `src/WeatherApp.Api/appsettings.Local.json` with your API key (section 1).
+2. *(Optional)* Start the observability stack: `docker compose -f observability/docker-compose.yml up -d` (section 5). Skip it if you do not need traces, metrics, or logs.
+3. Run the API from the repository root: `dotnet run --project src/WeatherApp.Api`.
+4. Run the frontend in a second terminal: `npm --prefix frontend install`, then `npm --prefix frontend run dev`.
+5. Open the app.
+
+| What | URL |
+|---|---|
+| Frontend | http://localhost:5173 |
+| API | http://localhost:5000 (health check at `/health`) |
+| Grafana (logs, traces, metrics) | http://localhost:3001 |
+| Jaeger / Prometheus | http://localhost:16686 / http://localhost:9090 |
+
+If `OTEL_EXPORTER_OTLP_ENDPOINT` is set but the stack is not running, the API still works; telemetry is simply not delivered.
 
 ### 1. Configure the API key (never commit it)
 
@@ -73,11 +90,12 @@ Copy-Item src/WeatherApp.Api/appsettings.Local.example.json src/WeatherApp.Api/a
 {
   "OpenWeatherMap": {
     "ApiKey": "REPLACE_WITH_OPENWEATHERMAP_API_KEY"
-  }
+  },
+  "OTEL_EXPORTER_OTLP_ENDPOINT": ""
 }
 ```
 
-`appsettings.Local.json` is git-ignored and loaded automatically when present. Environment variables and command-line arguments override it, for example `OpenWeatherMap__ApiKey=...`. The example file also lists `OTEL_EXPORTER_OTLP_ENDPOINT`; leave it empty to disable telemetry export, or set it to `http://localhost:4317` to use the local observability stack (see section 5).
+`appsettings.Local.json` is git-ignored and loaded automatically when present. Environment variables and command-line arguments override it, for example `OpenWeatherMap__ApiKey=...`. Leave `OTEL_EXPORTER_OTLP_ENDPOINT` empty to disable telemetry export, or set it to `http://localhost:4317` to send it to the local observability stack (section 5).
 
 Other settings in `appsettings.json`:
 
@@ -138,13 +156,20 @@ A Docker Compose stack in `observability/` runs an OpenTelemetry Collector, Jaeg
 
 ```powershell
 docker compose -f observability/docker-compose.yml up -d
-
-# Start the API with the OTLP endpoint (gRPC, the SDK default), from src\WeatherApp.Api
-$env:OTEL_EXPORTER_OTLP_ENDPOINT = 'http://localhost:4317'
-dotnet run --launch-profile http
 ```
 
-Instead of the environment variable, you can set `"OTEL_EXPORTER_OTLP_ENDPOINT": "http://localhost:4317"` in the git-ignored `appsettings.Local.json`, so the endpoint is active every time the API starts.
+Then enable the OTLP endpoint (gRPC, the SDK default) either in the git-ignored `src/WeatherApp.Api/appsettings.Local.json`, so it is active every time the API starts:
+
+```json
+{ "OTEL_EXPORTER_OTLP_ENDPOINT": "http://localhost:4317" }
+```
+
+or for a single PowerShell session only:
+
+```powershell
+$env:OTEL_EXPORTER_OTLP_ENDPOINT = 'http://localhost:4317'
+dotnet run --project src/WeatherApp.Api
+```
 
 | Tool | URL | What to look at |
 |---|---|---|
