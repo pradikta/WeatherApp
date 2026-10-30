@@ -32,6 +32,8 @@
 
 ## Build & Verification Commands
 
+- **Target Framework**: .NET 10 (`net10.0`) across all projects.
+- **Solution**: `WeatherApp.sln` uses the classic `.sln` format (create with `dotnet new sln -n WeatherApp --format sln`; the .NET 10 SDK defaults to `.slnx`).
 - **Restore**: `dotnet restore`
 - **Build**: `dotnet build`
 - **Run Api**: `dotnet run --project src/WeatherApp.Api`
@@ -71,9 +73,13 @@
 
 ### 5. Automated Tests (`tests/WeatherApp.Tests/`)
 
-- Unit test `Temperature` edge cases (32°F, 212°F, negative values).
-- Unit test CQRS Handlers against SQLite In-Memory context.
-- Mock `HttpClient` in `OpenWeatherMapService` tests using a custom `HttpMessageHandler`. **Zero live network calls.**
+- Framework: xUnit (`[Fact]` / `[Theory]`).
+- **Domain Logic Unit Tests**: test `Temperature` conversion edge cases (freezing 32°F → 0°C, boiling 212°F → 100°C, negative values).
+- **CQRS Handler Tests**:
+  - Query Handlers: unit test in isolation with mocked dependencies.
+  - Command Handlers: unit test against EF Core In-Memory, verifying state changes and persistence rules.
+- **API Endpoint / Integration Tests**: test Minimal API endpoints.
+- **Execution Constraint**: ALL tests MUST run 100% offline with zero live network calls (mock `HttpClient` via a custom `HttpMessageHandler`).
 
 ---
 
