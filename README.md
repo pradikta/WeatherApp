@@ -233,7 +233,7 @@ Tests live in `tests/WeatherApp.Tests` (xUnit, Moq, FluentAssertions) and run **
 | Architecture | Dependency rule between layers. |
 | Hardening | Rate limiting (429 + `Retry-After`, `/health` exempt), startup option validation, telemetry counters/activity, and OTLP log export against a loopback collector. |
 
-CI (`.github/workflows/ci.yml`) runs on every push and pull request to `main`: `dotnet restore`, `dotnet build --no-restore`, `dotnet test --no-build` on `ubuntu-latest`, plus frontend lint, tests, and build, and a `docker compose build` check.
+CI (`.github/workflows/ci.yml`) runs on every push and pull request to `main`: `dotnet restore`, `dotnet build --no-restore`, `dotnet test --no-build` on `ubuntu-24.04`, plus frontend lint, tests, and build, and a `docker compose build` check.
 
 Retry, circuit breaker, and timeout behavior is verified against a failing in-memory upstream (`ResilienceTests`).
 
