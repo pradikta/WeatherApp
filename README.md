@@ -77,7 +77,7 @@ Copy-Item src/WeatherApp.Api/appsettings.Local.example.json src/WeatherApp.Api/a
 }
 ```
 
-`appsettings.Local.json` is git-ignored and loaded automatically when present. Environment variables and command-line arguments override it, for example `OpenWeatherMap__ApiKey=...`.
+`appsettings.Local.json` is git-ignored and loaded automatically when present. Environment variables and command-line arguments override it, for example `OpenWeatherMap__ApiKey=...`. The example file also lists `OTEL_EXPORTER_OTLP_ENDPOINT`; leave it empty to disable telemetry export, or set it to `http://localhost:4317` to use the local observability stack (see section 5).
 
 Other settings in `appsettings.json`:
 
@@ -143,6 +143,8 @@ docker compose -f observability/docker-compose.yml up -d
 $env:OTEL_EXPORTER_OTLP_ENDPOINT = 'http://localhost:4317'
 dotnet run --launch-profile http
 ```
+
+Instead of the environment variable, you can set `"OTEL_EXPORTER_OTLP_ENDPOINT": "http://localhost:4317"` in the git-ignored `appsettings.Local.json`, so the endpoint is active every time the API starts.
 
 | Tool | URL | What to look at |
 |---|---|---|
