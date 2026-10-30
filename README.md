@@ -112,6 +112,7 @@ cd frontend
 npm install
 npm run dev     # http://localhost:5173
 npm run build   # type-check and production build into frontend/dist
+npm test        # Vitest unit tests (offline, fetch is mocked)
 ```
 
 The client is built with Vite, React, TypeScript, and Tailwind CSS. The dev server proxies `/api` to `http://localhost:5000` (see `frontend/vite.config.ts`), so no CORS setup is needed during development. Layout:

@@ -92,3 +92,4 @@
 - **Structure**: Modular structure separating components (`components/`), types (`types/`), and services/api (`services/`).
 - **Styling**: Tailwind CSS utility classes with clean card-based layouts, soft shadows, rounded corners, and consistent color themes.
 - **Type Safety**: Strict TypeScript interfaces mapping directly to backend DTO payloads.
+- **Tests**: Vitest + Testing Library, co-located as `*.test.ts(x)`. Run `npm --prefix frontend test`; `fetch` MUST be mocked (no live network calls).
