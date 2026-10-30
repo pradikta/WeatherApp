@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using FluentAssertions;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using WeatherApp.Application.Interfaces;
@@ -87,7 +88,9 @@ public class HardeningTests
     [Fact]
     public void Startup_MissingApiKey_StillBoots()
     {
-        using var factory = CreateFactory();
+        using var factory = CreateFactory().WithWebHostBuilder(builder =>
+            builder.ConfigureAppConfiguration((_, config) =>
+                config.AddInMemoryCollection([new("OpenWeatherMap:ApiKey", "")])));
 
         var options = factory.Services.GetRequiredService<IOptions<OpenWeatherMapOptions>>().Value;
 
