@@ -11,8 +11,6 @@ public sealed class GetCountriesQueryHandler(ICountryRepository countryRepositor
     {
         var countries = await countryRepository.GetCountriesAsync(cancellationToken);
 
-        return countries
-            .Select(c => new CountryDto(c.Code, c.Name))
-            .ToList();
+        return [.. countries.Select(c => new CountryDto(c.Code, c.Name))];
     }
 }
