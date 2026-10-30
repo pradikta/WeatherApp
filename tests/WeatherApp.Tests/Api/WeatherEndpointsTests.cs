@@ -8,16 +8,9 @@ using WeatherApp.Application.Exceptions;
 
 namespace WeatherApp.Tests.Api;
 
-public class WeatherEndpointsTests : IClassFixture<WeatherApiFactory>
+public class WeatherEndpointsTests(WeatherApiFactory factory) : IClassFixture<WeatherApiFactory>
 {
-    private readonly WeatherApiFactory _factory;
-    private readonly HttpClient _client;
-
-    public WeatherEndpointsTests(WeatherApiFactory factory)
-    {
-        _factory = factory;
-        _client = factory.CreateClient();
-    }
+    private readonly HttpClient _client = factory.CreateClient();
 
     [Fact]
     public async Task GetCountries_ReturnsSeededCountries()
@@ -53,7 +46,7 @@ public class WeatherEndpointsTests : IClassFixture<WeatherApiFactory>
     [Fact]
     public async Task GetWeather_ReturnsWeatherPayload()
     {
-        _factory.WeatherService
+        factory.WeatherService
             .Setup(s => s.GetCurrentWeatherAsync("Jakarta", It.IsAny<CancellationToken>()))
             .ReturnsAsync(new WeatherResponseDto
             {
@@ -76,7 +69,7 @@ public class WeatherEndpointsTests : IClassFixture<WeatherApiFactory>
     [Fact]
     public async Task GetWeather_UnknownCity_ReturnsNotFoundProblem()
     {
-        _factory.WeatherService
+        factory.WeatherService
             .Setup(s => s.GetCurrentWeatherAsync("Nowhere", It.IsAny<CancellationToken>()))
             .ThrowsAsync(new CityNotFoundException("Nowhere"));
 
@@ -88,7 +81,7 @@ public class WeatherEndpointsTests : IClassFixture<WeatherApiFactory>
     [Fact]
     public async Task GetWeather_UpstreamFailure_ReturnsBadGatewayProblem()
     {
-        _factory.WeatherService
+        factory.WeatherService
             .Setup(s => s.GetCurrentWeatherAsync("Down", It.IsAny<CancellationToken>()))
             .ThrowsAsync(new HttpRequestException("upstream unavailable"));
 
@@ -100,7 +93,7 @@ public class WeatherEndpointsTests : IClassFixture<WeatherApiFactory>
     [Fact]
     public async Task GetWeather_UnexpectedFailure_ReturnsInternalServerErrorProblem()
     {
-        _factory.WeatherService
+        factory.WeatherService
             .Setup(s => s.GetCurrentWeatherAsync("Broken", It.IsAny<CancellationToken>()))
             .ThrowsAsync(new InvalidOperationException("secret internal detail"));
 
