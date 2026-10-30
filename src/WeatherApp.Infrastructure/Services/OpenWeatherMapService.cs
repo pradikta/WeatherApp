@@ -45,7 +45,9 @@ public sealed class OpenWeatherMapService(HttpClient httpClient, IOptions<OpenWe
 
         return new WeatherResponseDto
         {
-            Location = $"{location.Name}, {location.Country}",
+            // The geocoder may return a long official name (e.g. "Special Capital Region of Jakarta"),
+            // so keep the requested city name for a concise "City, Country" label.
+            Location = $"{cityName.Trim()}, {location.Country}",
             TimeUtc = DateTimeOffset.FromUnixTimeSeconds(response.Dt),
             WindSpeed = response.Wind?.Speed,
             WindDirection = response.Wind?.Deg,

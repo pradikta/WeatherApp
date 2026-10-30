@@ -44,6 +44,18 @@ public class OpenWeatherMapServiceTests
     }
 
     [Fact]
+    public async Task GetCurrentWeatherAsync_UsesRequestedCityNameInsteadOfLongGeocoderName()
+    {
+        const string longGeocode = """[{"name":"Special Capital Region of Jakarta","lat":-6.2,"lon":106.8,"country":"ID"}]""";
+        var handler = new StubHttpMessageHandler(request =>
+            request.RequestUri!.AbsolutePath.StartsWith("/geo/") ? Json(longGeocode) : Json(WeatherJson));
+
+        var result = await CreateService(handler).GetCurrentWeatherAsync("Jakarta", CancellationToken.None);
+
+        result.Location.Should().Be("Jakarta, ID");
+    }
+
+    [Fact]
     public async Task GetCurrentWeatherAsync_RequestsImperialUnitsAndGeocodedCoordinates()
     {
         var handler = new StubHttpMessageHandler(request =>
