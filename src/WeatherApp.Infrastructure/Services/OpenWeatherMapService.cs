@@ -47,8 +47,8 @@ public sealed class OpenWeatherMapService(HttpClient httpClient, IOptions<OpenWe
         {
             Location = $"{location.Name}, {location.Country}",
             TimeUtc = DateTimeOffset.FromUnixTimeSeconds(response.Dt),
-            WindSpeed = response.Wind.Speed,
-            WindDirection = response.Wind.Deg,
+            WindSpeed = response.Wind?.Speed,
+            WindDirection = response.Wind?.Deg,
             Visibility = response.Visibility,
             Pressure = response.Main.Pressure,
             SkyCondition = response.Weather.FirstOrDefault()?.Description ?? string.Empty,
@@ -88,9 +88,9 @@ public sealed class OpenWeatherMapService(HttpClient httpClient, IOptions<OpenWe
     {
         public MainInfo Main { get; init; } = new();
         public List<WeatherInfo> Weather { get; init; } = [];
-        public WindInfo Wind { get; init; } = new();
+        public WindInfo? Wind { get; init; }
         public long Dt { get; init; }
-        public int Visibility { get; init; }
+        public int? Visibility { get; init; }
     }
 
     private sealed record MainInfo
@@ -107,7 +107,7 @@ public sealed class OpenWeatherMapService(HttpClient httpClient, IOptions<OpenWe
 
     private sealed record WindInfo
     {
-        public double Speed { get; init; }
-        public double Deg { get; init; }
+        public double? Speed { get; init; }
+        public double? Deg { get; init; }
     }
 }

@@ -92,7 +92,7 @@ public class OpenWeatherMapServiceTests
     }
 
     [Fact]
-    public async Task GetCurrentWeatherAsync_EmptyWeatherAndMissingWind_UsesDefaults()
+    public async Task GetCurrentWeatherAsync_EmptyWeatherAndMissingWind_LeavesOptionalFieldsNull()
     {
         const string sparseJson = """{"main":{"temp":32,"pressure":1000,"humidity":80},"visibility":5000,"dt":1760000000}""";
         var handler = new StubHttpMessageHandler(request =>
@@ -101,8 +101,8 @@ public class OpenWeatherMapServiceTests
         var result = await CreateService(handler).GetCurrentWeatherAsync("Jakarta", CancellationToken.None);
 
         result.SkyCondition.Should().BeEmpty();
-        result.WindSpeed.Should().Be(0);
-        result.WindDirection.Should().Be(0);
+        result.WindSpeed.Should().BeNull();
+        result.WindDirection.Should().BeNull();
         result.TempCelsius.Should().Be(0);
     }
 
