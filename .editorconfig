@@ -10,6 +10,11 @@ indent_style = space
 insert_final_newline = true
 trim_trailing_whitespace = true
 
+# C# analyzer settings
+[*.cs]
+# CA1067 false-positives on records (records already synthesize Equals(object))
+dotnet_diagnostic.CA1067.severity = none
+
 # Web and configuration files (2 spaces)
 [*.{js,jsx,ts,tsx,json,yml,yaml,md,html,css}]
 indent_size = 2
